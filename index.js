@@ -78,13 +78,29 @@ app.post('/send-emails', async (req, res) => {
       await page.keyboard.press('Enter');
       console.log(`📧 Entered Billing Contact: ${billingEmail}`);
 
-      // 🧾 Select Email Template (Changed to 90 Days)
+      // 🧾 Headless-safe Select2 Template Selection: "90 Days Past Due"
       await page.waitForSelector('#s2id_customForms .select2-choice', { visible: true });
-      await page.click('#s2id_customForms .select2-choice');
-      await page.waitForSelector('.select2-drop-active .select2-search input', { visible: true });
-      await page.type('.select2-drop-active .select2-search input', '90 Days Past Due');
+
+      // Force open dropdown using raw JS
+      await page.evaluate(() => {
+        const dropdown = document.querySelector('#s2id_customForms .select2-choice');
+        if (dropdown) dropdown.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      });
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Inject value using raw JS (select2-input might not be focusable in headless)
+      await page.evaluate(() => {
+        const input = document.querySelector('.select2-drop-active input.select2-input');
+        if (input) {
+          input.value = '90 Days Past Due';
+          const event = new Event('input', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+      });
+
+      // Press Enter to confirm selection
       await page.keyboard.press('Enter');
-      console.log('✅ Selected template: 90 Days Past Due');
+      console.log('✅ Force-selected template: 90 Days Past Due');
 
       // 🚀 Send Email
       await new Promise(resolve => setTimeout(resolve, 1000));
